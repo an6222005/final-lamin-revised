@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拉麵查找器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        .progress-bar {
+            width: 100%;
+            background-color: #f3f3f3;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-bar-inner {
+            height: 20px;
+            width: 0%;
+            background-color: #4caf50;
+            transition: width 0.3s ease;
+        }
+        #weather-info, #ramen-link {
+            margin-top: 20px;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>拉麵查找器</h1>
+    <p>想吃拉麵嗎？讓我們幫你找到最靠近的拉麵店並告訴你當地的天氣！</p>
+    <div class="progress-bar">
+        <div class="progress-bar-inner" id="progress-bar"></div>
+    </div>
+    <button id="locate-btn">開始查找</button>
+    <div id="weather-info"></div>
+    <div id="ramen-link"></div>
+
+    <script>
+        const progressBar = document.getElementById("progress-bar");
+        const weatherInfoDiv = document.getElementById("weather-info");
+        const ramenLinkDiv = document.getElementById("ramen-link");
+
+        document.getElementById("locate-btn").addEventListener("click", async () => {
+            // 重置進度條和資訊區
+            progressBar.style.width = "0%";
+            weatherInfoDiv.innerHTML = "";
+            ramenLinkDiv.innerHTML = "";
+
+            // 更新進度：開始定位
+            updateProgress(33, "正在獲取位置...");
+            if (!navigator.geolocation) {
+                showError("你的瀏覽器不支援地理定位功能。");
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const { latitude, longitude } = position.coords;
+
+                    // 更新進度：獲取位置成功
+                    updateProgress(66, `你的位置：經度 ${longitude}, 緯度 ${latitude}`);
+
+                    // 查詢天氣資訊
+                    const apiKey = "e90d85ceb7cead271a7babf436dbd028";
+                    const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&lang=zh_tw&appid=${apiKey}`;
+                    try {
+                        const response = await fetch(weatherUrl);
+                        const data = await response.json();
+                        if (response.ok) {
+                            // 更新進度：天氣查詢成功
+                            updateProgress(100, "天氣資訊已載入！");
+
+                            // 顯示天氣資訊
+                            weatherInfoDiv.innerHTML = `
+                                <p>當前天氣：${data.weather[0].description}</p>
+                                <p>溫度：${data.main.temp}°C</p>
+                                <p>濕度：${data.main.humidity}%</p>
+                            `;
+
+                            // 顯示搜尋拉麵店連結
+                            ramenLinkDiv.innerHTML = `
+                                <a href="https://www.google.com/maps/search/拉麵/@${latitude},${longitude},15z" target="_blank">搜尋附近的拉麵店</a>
+                            `;
+                        } else {
+                            showError(`天氣查詢失敗：${data.message}`);
+                        }
+                    } catch (error) {
+                        showError("無法獲取天氣資訊，請稍後再試！");
+                        console.error(error);
+                    }
+                },
+                (error) => {
+                    showError(`定位失敗：${error.message}`);
+                }
+            );
+        });
+
+        // 更新進度條和訊息
+        function updateProgress(percent, message) {
+            progressBar.style.width = `${percent}%`;
+            weatherInfoDiv.innerHTML = `<p>${message}</p>`;
+        }
+
+        // 顯示錯誤訊息
+        function showError(message) {
+            weatherInfoDiv.innerHTML = `<p class="error">${message}</p>`;
+            progressBar.style.width = "0%";
+        }
+    </script>
+</body>
+</html>
